@@ -48,6 +48,12 @@ class Settings(BaseSettings):
     upload_dir: str = "/app/storage/uploads"
     max_upload_size_mb: int = 25
 
+    # Security
+    api_key: str = ""
+    cors_origins: str = ""  # comma-separated, e.g. "https://example.com,https://app.example.com"
+    rate_limit_upload: str = "10/minute"
+    rate_limit_query: str = "20/minute"
+
     @property
     def upload_path(self) -> Path:
         path = Path(self.upload_dir)
@@ -58,7 +64,14 @@ class Settings(BaseSettings):
     def max_upload_size_bytes(self) -> int:
         return self.max_upload_size_mb * 1024 * 1024
 
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    # Required fields are supplied via environment variables / .env at
+    # runtime; mypy can't see that, hence the pydantic-settings-specific
+    # ignore (see https://github.com/pydantic/pydantic-settings/issues/201).
+    return Settings()  # type: ignore[call-arg]
