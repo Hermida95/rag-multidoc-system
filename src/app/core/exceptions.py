@@ -60,3 +60,8 @@ class DocumentNotReadyError(AppError):
 
     status_code = 409
     error_code = "document_not_ready"
+
+
+class UnauthorizedError(AppError):
+    status_code = 401
+    error_code = "unauthorized"

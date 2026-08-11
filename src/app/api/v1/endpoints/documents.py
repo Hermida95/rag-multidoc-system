@@ -1,16 +1,23 @@
 import uuid
 
-from fastapi import APIRouter, File, UploadFile, status
+from fastapi import APIRouter, Depends, File, Request, UploadFile, status
 
 from app.api.deps import DocumentRepositoryDep, UploadDocumentUseCaseDep
+from app.api.security import verify_api_key
 from app.api.v1.schemas.document_schemas import (
     DocumentListResponse,
     DocumentResponse,
     DocumentUploadResponse,
 )
+from app.core.config import get_settings
 from app.core.exceptions import NotFoundError
+from app.core.rate_limit import limiter
 
-router = APIRouter(prefix="/documents", tags=["documents"])
+settings = get_settings()
+
+router = APIRouter(
+    prefix="/documents", tags=["documents"], dependencies=[Depends(verify_api_key)]
+)
 
 
 @router.post(
@@ -19,7 +26,9 @@ router = APIRouter(prefix="/documents", tags=["documents"])
     status_code=status.HTTP_202_ACCEPTED,
     summary="Upload a document (PDF/Markdown) for asynchronous RAG ingestion",
 )
+@limiter.limit(settings.rate_limit_upload)
 async def upload_document(
+    request: Request,
     use_case: UploadDocumentUseCaseDep,
     file: UploadFile = File(...),
 ) -> DocumentUploadResponse:
