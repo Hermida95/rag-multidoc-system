@@ -53,6 +53,9 @@ class Settings(BaseSettings):
     cors_origins: str = ""  # comma-separated, e.g. "https://example.com,https://app.example.com"
     rate_limit_upload: str = "10/minute"
     rate_limit_query: str = "20/minute"
+    # Blanket per-IP cap applied to every request, including ones that fail
+    # auth before reaching an endpoint's own stricter limit above.
+    blanket_rate_limit_per_minute: int = 100
 
     @property
     def upload_path(self) -> Path:

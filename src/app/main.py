@@ -8,11 +8,19 @@ from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.core.exceptions import AppError
 from app.core.logging import configure_logging, get_logger
-from app.core.rate_limit import limiter
+from app.core.rate_limit import BlanketRateLimitMiddleware, limiter
 
 settings = get_settings()
 configure_logging(settings.log_level)
 logger = get_logger(__name__)
+
+# Upstream provider errors (502s from OpenAI) can carry raw error text from
+# the provider. Log it in full server-side, but never forward it verbatim to
+# API clients — it may describe internal request details that aren't ours
+# to disclose to whoever holds a valid API key.
+_GENERIC_UPSTREAM_ERROR_MESSAGE = (
+    "Upstream AI provider request failed. Please try again shortly."
+)
 
 
 def create_app() -> FastAPI:
@@ -27,10 +35,29 @@ def create_app() -> FastAPI:
         debug=settings.debug,
     )
 
+    if not settings.api_key:
+        logger.warning(
+            "api_key_unset",
+            hint=(
+                "API_KEY is empty — /documents and /chat endpoints are "
+                "unauthenticated. Fine for local dev, never for a "
+                "deployment reachable by anyone else."
+            ),
+        )
+
     app.state.limiter = limiter
     # slowapi's handler signature predates Starlette's typed ExceptionHandler
     # protocol; functionally correct, just not typed to match it yet.
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
+    # Blanket per-IP limit at the ASGI layer, ahead of routing/dependencies —
+    # covers failed-auth requests that never reach a per-endpoint
+    # @limiter.limit(...) decorator. See core/rate_limit.py for why this
+    # isn't slowapi's own SlowAPIMiddleware.
+    app.add_middleware(
+        BlanketRateLimitMiddleware,
+        max_requests=settings.blanket_rate_limit_per_minute,
+        window_seconds=60,
+    )
 
     if settings.cors_origins_list:
         app.add_middleware(
@@ -60,9 +87,12 @@ def create_app() -> FastAPI:
             message=exc.message,
             path=request.url.path,
         )
+        client_message = (
+            _GENERIC_UPSTREAM_ERROR_MESSAGE if exc.status_code >= 500 else exc.message
+        )
         return JSONResponse(
             status_code=exc.status_code,
-            content={"error_code": exc.error_code, "message": exc.message},
+            content={"error_code": exc.error_code, "message": client_message},
         )
 
     return app

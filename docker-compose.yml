@@ -8,7 +8,12 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rag_password}
       POSTGRES_DB: ${POSTGRES_DB:-rag_db}
     ports:
-      - "5432:5432"
+      # Bound to loopback only: the api/worker containers reach db over the
+      # internal Docker network regardless, so publishing this to 0.0.0.0
+      # would just expose Postgres (with a default dev password) to
+      # anything that can reach the host. Only needed here for local
+      # debugging with a host-side DB client.
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -22,7 +27,10 @@ services:
     container_name: rag_redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      # Loopback only — same rationale as db above. Redis has no
+      # authentication configured by default, so this must never be
+      # published to 0.0.0.0 in any environment beyond a single dev machine.
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s

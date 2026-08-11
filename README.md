@@ -90,12 +90,15 @@ Los casos de uso (`ProcessDocumentUseCase`, `QueryRagUseCase`, `UploadDocumentUs
 
 Ver [SECURITY.md](SECURITY.md) para el detalle completo. Resumen:
 
-- Autenticación por `X-API-Key` en los endpoints que disparan llamadas a OpenAI (evita abuso/gasto no autorizado)
-- Rate limiting por IP (`slowapi`) en upload y query
+- Autenticación por `X-API-Key` (comparación en tiempo constante) en los endpoints que disparan llamadas a OpenAI, con rate limiting por IP que cubre también los intentos de auth fallidos, no solo las peticiones autenticadas
+- Protección anti path-traversal en la subida de ficheros; el nombre de archivo del cliente nunca se usa tal cual para escribir en disco
+- `DELETE /documents/{id}` borra también el fichero en disco, no solo el registro en base de datos
+- Lectura de subidas en streaming con corte al superar el límite (evita agotar disco/memoria con un `Content-Length` falso u omitido)
+- Postgres y Redis solo accesibles en `127.0.0.1` en el `docker-compose.yml` por defecto, nunca expuestos a la red
+- `DEBUG=false` por defecto (sin stack traces filtrados) y errores del proveedor de IA nunca reenviados en crudo al cliente
 - Contenedor Docker corriendo como usuario no-root
 - Cabeceras de seguridad (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`)
 - CORS deshabilitado por defecto (opt-in explícito)
-- Validación estricta de entrada, allow-list de extensiones, límite de tamaño de archivo
 - `.env` fuera del repo; solo se versiona `.env.example` sin valores reales
 - Dependabot + CodeQL + `pip-audit` corriendo automáticamente
 
