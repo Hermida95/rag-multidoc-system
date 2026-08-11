@@ -14,7 +14,7 @@ pgvector==0.3.4
 celery[redis]==5.4.0
 redis==5.0.8
 
-pypdf==5.0.1
+pypdf==6.15.0
 tiktoken==0.8.0
 openai==1.51.0
 tenacity==9.0.0
