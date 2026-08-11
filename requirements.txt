@@ -16,7 +16,7 @@ redis==5.0.8
 
 pypdf==6.15.0
 tiktoken==0.8.0
-openai==1.51.0
+openai==2.53.0
 tenacity==9.0.0
 
 python-dotenv==1.2.2
