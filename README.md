@@ -18,7 +18,7 @@ No es un notebook con un `while True` sobre un PDF de ejemplo. Es un intento hon
 ```mermaid
 flowchart LR
     subgraph Client
-        U[Usuario / cliente HTTP]
+        U["Usuario / cliente HTTP"]
     end
 
     subgraph API["FastAPI (api/)"]
@@ -28,33 +28,33 @@ flowchart LR
     end
 
     subgraph Async["Celery worker"]
-        EXT[Extractor PDF/Markdown]
-        CHK[Chunker semántico]
-        EMB[Embeddings OpenAI]
+        EXT["Extractor PDF/Markdown"]
+        CHK["Chunker semántico"]
+        EMB["Embeddings OpenAI"]
     end
 
     subgraph Data
-        PG[(PostgreSQL + pgvector\nHNSW cosine index)]
-        FS[(Filesystem\nstorage/uploads)]
+        PG[("PostgreSQL + pgvector<br/>HNSW cosine index")]
+        FS[("Filesystem<br/>storage/uploads")]
     end
 
     subgraph RAG["Query pipeline"]
-        QEMB[Embed pregunta]
-        SIM[Similarity search]
-        LLM[LLM con contexto citable]
+        QEMB["Embed pregunta"]
+        SIM["Similarity search"]
+        LLM["LLM con contexto citable"]
     end
 
-    U -->|1. sube archivo| AUTH --> UP
-    UP -->|guarda bytes| FS
-    UP -->|202 + document_id| U
-    UP -.->|encola tarea| EXT
-    EXT --> CHK --> EMB -->|vectores + metadata| PG
+    U -->|"1. sube archivo"| AUTH --> UP
+    UP -->|"guarda bytes"| FS
+    UP -->|"202 + document_id"| U
+    UP -.->|"encola tarea"| EXT
+    EXT --> CHK --> EMB -->|"vectores + metadata"| PG
 
-    U -->|2. pregunta| AUTH --> Q
+    U -->|"2. pregunta"| AUTH --> Q
     Q --> QEMB --> SIM
-    SIM -->|top-k chunks + score| PG
+    SIM -->|"top-k chunks + score"| PG
     SIM --> LLM
-    LLM -->|respuesta + fuentes [n]| U
+    LLM -->|"respuesta + fuentes citables"| U
 ```
 
 **Ingesta**: la subida nunca bloquea — el archivo se persiste, se crea el registro `Document` en estado `pending`, y se responde `202 Accepted` de inmediato. Un worker de Celery, completamente desacoplado, ejecuta extracción → chunking → embeddings → indexado, y actualiza el estado (`processing → ready | failed`) con el error real si algo sale mal.
